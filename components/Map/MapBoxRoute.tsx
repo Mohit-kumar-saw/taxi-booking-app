@@ -1,7 +1,7 @@
 import React from "react";
 import { Layer, Source } from "react-map-gl";
 
-const MapBoxRoute = (props:any) => {
+const MapBoxRoute = (props: any) => {
   return (
     <div>
       <Source
@@ -10,13 +10,15 @@ const MapBoxRoute = (props:any) => {
           type: "Feature",
           geometry: {
             type: "LineString",
-            coordinates: props.coordinates
-          }
+            coordinates: props.coordinates,
+          },
+          properties: {}, // Add an empty properties object
         }}
       >
-        <Layer type="line" 
-        layout={{'line-join': 'round', 'line-cap': 'square'}}
-        paint={{'line-color': '#0462d4', 'line-width': 4}}
+        <Layer
+          type="line"
+          layout={{ "line-join": "round", "line-cap": "square" }}
+          paint={{ "line-color": "#0462d4", "line-width": 4 }}
         />
       </Source>
     </div>
