@@ -38,7 +38,7 @@ const CheckOutForm = () => {
     });
   };
   return (
-    <div className="flex flex-col justify-center items-center">
+    <div className="flex h-[90vh] flex-col justify-center items-center">
         <h2>Payment</h2>
       <form onClick={handleSubmit} className="max-w-md mt-6">
         <PaymentElement />
