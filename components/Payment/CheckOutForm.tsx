@@ -80,3 +80,4 @@ export default function CheckOutForm({ amount, onSuccess }: CheckOutFormProps) {
     </form>
   )
 }
+
