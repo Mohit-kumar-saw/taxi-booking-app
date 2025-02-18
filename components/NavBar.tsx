@@ -1,19 +1,50 @@
-import { UserButton } from '@clerk/nextjs'
-import React from 'react'
+'use client'
+import { UserButton } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { SunIcon, MoonIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
 
-const NavBar = () => {
+export default function NavBar() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
-    <div className='flex justify-between p-3 px-10 border-b-[1px] shadow-sm'>
-      <div className="logo h-8 px-2 rounded-md flex justify-center align-middle font-bold text-2xl bg-yellow-400 ">TAXI-GO</div>
-      <div className="  list hidden md:flex gap-5">
-        <h2>Home</h2>
-        <h2>History</h2>
-        <h2>Help</h2>
+    <div className="p-4 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="container mx-auto flex items-center justify-between">
+        <Link href="/" className="text-2xl font-bold text-primary">
+          TaxiGo
+        </Link>
+        
+        <div className="flex items-center space-x-6">
+          <Link 
+            href="/history" 
+            className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors"
+          >
+            <ClockIcon className="h-5 w-5" />
+            <span>History</span>
+          </Link>
+          
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            {theme === 'dark' ? (
+              <SunIcon className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <MoonIcon className="h-5 w-5 text-gray-600" />
+            )}
+          </button>
+          
+          <UserButton afterSignOutUrl="/" />
+        </div>
       </div>
-      <UserButton afterSignOutUrl='/'/>
-
     </div>
-  )
+  );
 }
-
-export default NavBar

@@ -1,43 +1,57 @@
+'use client'
+import React, { useState, useContext } from 'react'
+import { DirectionDataContext } from '@/context/DirectionDataContext'
+import { SelectedCarAmountContext } from '@/context/SelectedCarAmountContext'
+import Image from 'next/image'
 import CarsList from "@/app/data/CarsList";
-import { DirectionDataContext } from "@/context/DirectionDataContext";
-import { SelectCarAmountContext } from "@/context/SelectedCarAmountContext";
-import Image from "next/image";
-import React, { useContext, useState } from "react";
 
-const Cars = () => {
-  const[selectCar,setSelectCar]=useState<any>()
-  const { directionData, setDirecrtionData } = useContext(DirectionDataContext);
-  const {carAmount,setCarAmount}=useContext(SelectCarAmountContext)
+export default function Cars() {
+  const [selectedCar, setSelectedCar] = useState<number | null>(null)
+  const { directionData } = useContext(DirectionDataContext)
+  const { setCarAmount } = useContext(SelectedCarAmountContext)
 
+  const calculateCost = (charges: number) => {
+    if (!directionData?.routes?.[0]?.distance) return 0
+    const baseFare = 50 // Base fare in rupees
+    const perKmCharge = 15 // Per kilometer charge
+    const distance = directionData.routes[0].distance / 1000 // Convert to kilometers
+    return Math.round((baseFare + (distance * perKmCharge)) * charges)
+  }
 
-  const getCost = (charges: any) => {
-    return (charges * directionData.routes[0].distance * 0.000621371192).toFixed(2);
-  };
+  const handleCarSelect = (carId: number, charges: number) => {
+    setSelectedCar(carId)
+    const cost = calculateCost(charges)
+    setCarAmount(cost)
+  }
 
   return (
-    <div className="mt-6">
-      <h2 className="font-semibold">Select Car</h2>
-      <div className="grid grid-cols-4 md:grid-cols-2 lg:grid-cols-4">
-        {CarsList.map((item, index) => (
+    <div className='mt-6'>
+      <h2 className='font-medium text-[14px] mb-3'>Select Car</h2>
+      <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+        {CarsList.map((car) => (
           <div
-            key={index}
-            className={`m-2 p-2 border-[1px] rounded-md flex flex-col justify-center items-center hover:bg-slate-200 cursor-pointer hover:scale-[1.02] ${index==selectCar?'border-yellow-400 border-[2px]':null}`}
-          onClick={()=>{
-            setSelectCar(index)
-            setCarAmount(item.charges)
-          }}
+            key={car.id}
+            className={`p-2 pb-3 border-[1px] rounded-md cursor-pointer hover:border-yellow-400 hover:scale-105 transition-all ${
+              selectedCar === car.id ? 'border-yellow-400 bg-yellow-50' : ''
+            }`}
+            onClick={() => handleCarSelect(car.id, car.charges)}
           >
-            <Image src={item.image} alt={item.name} width={75} height={90} />
-            <h2 className="text-[12px] float-start mt-1">{item.name}</h2>
-            {directionData.routes?
-            <span className="float-right text-[14px] mt-1">
-              {getCost(item.charges)}$
-            </span>:null}
+            <Image 
+              src={car.image} 
+              alt={car.name} 
+              width={75} 
+              height={75}
+              className='w-full'
+            />
+            <h2 className='text-[12px] text-gray-500'>{car.name}</h2>
+            {directionData?.routes?.[0]?.distance && (
+              <span className='text-[12px] font-medium'>
+                ₹{calculateCost(car.charges)}
+              </span>
+            )}
           </div>
         ))}
       </div>
     </div>
-  );
-};
-
-export default Cars;
+  )
+}
