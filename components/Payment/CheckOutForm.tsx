@@ -1,53 +1,83 @@
 'use client'
+import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-import {
-  PaymentElement,
-  useElements,
-  useStripe,
-} from "@stripe/react-stripe-js";
-import React from "react";
+interface CheckOutFormProps {
+  amount: number
+  onSuccess: () => void
+}
 
-const CheckOutForm = () => {
-  const stripe: any = useStripe();
-  const elements = useElements();
+export default function CheckOutForm({ amount, onSuccess }: CheckOutFormProps) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const router = useRouter()
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = async (event: any) => {
-    event.preventDefault();
-    if (elements == null) {
-      return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    if (!stripe || !elements) {
+      return
     }
-    const { error: submitError } = await elements.submit();
-    if (submitError) {
-      return;
-    }
 
-    const res = await fetch("/api/create-intent", {
-      method: "POST",
-      body: JSON.stringify({
-        amount: 58,
-      }),
-    });
-    const secretKey = await res.json();
-    console.log(secretKey);
-    const { error } = await stripe.confirmPayent({
-      clientSecret: secretKey,
-      elements,
-      confirmParams: {
-        return_url: "http//localhost:3000/",
-      },
-    });
-  };
+    setIsLoading(true)
+    setErrorMessage('')
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/booking/success`,
+        },
+      })
+
+      if (error) {
+        setErrorMessage(error.message || 'Payment failed')
+      } else {
+        onSuccess()
+      }
+    } catch (e) {
+      setErrorMessage('An unexpected error occurred')
+      console.error('Payment error:', e)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <div className="flex h-[90vh] flex-col justify-center items-center">
-        <h2>Payment</h2>
-      <form onClick={handleSubmit} className="max-w-md mt-6">
-        <PaymentElement />
-        <button type="submit" disabled={!stripe || !elements} className="w-full p-2 bg-yellow-400 rounded-md mt-3">
-          Pay
-        </button>
-      </form>
-    </div>
-  );
-};
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <PaymentElement />
 
-export default CheckOutForm;
+      {errorMessage && (
+        <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {errorMessage}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={!stripe || isLoading}
+        className={`
+          w-full p-3 rounded-lg font-semibold text-white
+          transition-all duration-200
+          ${!stripe || isLoading
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600'
+          }
+        `}
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+            <span className="ml-2">Processing...</span>
+          </div>
+        ) : (
+          `Pay ₹${amount}`
+        )}
+      </button>
+    </form>
+  )
+}
+

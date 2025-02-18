@@ -1,98 +1,180 @@
-"use client";
-import { UserLocationContext } from "@/context/UserLocationContext";
-import React, { useContext, useEffect, useRef } from "react";
-import { Map, Marker } from "react-map-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import Markers from "./Markers";
-import { SourceCordiContext } from "@/context/SourceCordiContext";
-import { DestinationCordiContext } from "@/context/DestinationCordiContext";
-import { DirectionDataContext } from "@/context/DirectionDataContext";
-import MapBoxRoute from "./MapBoxRoute";
-import DistanceTime from "./DistanceTime";
+'use client'
+import React, { useEffect, useRef, useContext, useMemo } from 'react'
+import { Map } from 'react-map-gl'
+import 'mapbox-gl/dist/mapbox-gl.css';
+import Markers from './Markers';
+import { SourceCordiContext } from '@/context/SourceCordiContext';
+import { DestinationCordiContext } from '@/context/DestinationCordiContext';
+import { DirectionDataContext } from '@/context/DirectionDataContext';
+import MapBoxRoute from './MapBoxRoute';
+import DistanceTime from './DistanceTime';
 
-const MapBox = () => {
+const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+// Initial map center (India)
+const INITIAL_VIEW_STATE = {
+  longitude: 78.9629,
+  latitude: 20.5937,
+  zoom: 4
+};
+
+// Map style optimization
+const MAP_STYLE = {
+  version: 8,
+  sources: {},
+  layers: [],
+  glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
+  sprite: 'mapbox://sprites/mapbox/streets-v11'
+};
+
+export default function MapBox() {
   const mapRef = useRef<any>();
-  const { userLocation } = useContext(UserLocationContext);
-  const { sourceCordinates, setSourceCordinates } =
-    useContext(SourceCordiContext);
-  const { DestinationCordinates, setDestinationCordinates } = useContext(
-    DestinationCordiContext
-  );
-  const { directionData, setDirecrtionData } = useContext(DirectionDataContext);
+  const { sourceCordinates } = useContext(SourceCordiContext);
+  const { DestinationCordinates } = useContext(DestinationCordiContext);
+  const { directionData, setDirectionData } = useContext(DirectionDataContext);
 
-  const session_token = "5ccce4a4-ab0a-4a7c-943d-580e55542363";
-  const MAPBOX_DRIVING_ENDPOINT =
-    "https://api.mapbox.com/directions/v5/mapbox/driving/";
-
-  useEffect(() => {
-    if (sourceCordinates) {
-      mapRef.current?.flyTo({
-        center: [sourceCordinates.lng, sourceCordinates.lat],
-        duration: 2500,
-      });
-    }
-  }, [sourceCordinates]);
-
-  useEffect(() => {
-    if (DestinationCordinates) {
-      mapRef.current?.flyTo({
-        center: [DestinationCordinates.lng, DestinationCordinates.lat],
-        duration: 2500,
-      });
-    }
-
-    if (sourceCordinates && DestinationCordinates) {
-      getDirectionRoute();
-    }
-  }, [DestinationCordinates]);
-
-  const getDirectionRoute = async () => {
-    const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${sourceCordinates.lng},${sourceCordinates.lat};${DestinationCordinates.lng},${DestinationCordinates.lat}?overview=full&geometries=geojson&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`,
-        
-      {
-        headers: {
-          "content-Type": "application/json",
-        },
+  // Memoize map style to prevent unnecessary re-renders
+  const mapStyle = useMemo(() => ({
+    ...MAP_STYLE,
+    sources: {
+      ...MAP_STYLE.sources,
+      'mapbox-streets': {
+        type: 'vector',
+        url: 'mapbox://mapbox.mapbox-streets-v8'
       }
-    );
+    },
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: {
+          'background-color': '#ffffff'
+        }
+      },
+      {
+        id: 'road-network',
+        type: 'line',
+        source: 'mapbox-streets',
+        'source-layer': 'road',
+        paint: {
+          'line-color': '#ddd',
+          'line-width': 1
+        }
+      }
+    ]
+  }), []);
 
-    const result = await res.json();
-    console.log(result);
+  // Debounce route calculation
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    setDirecrtionData(result);
-  };
+    const calculateRoute = async () => {
+      if (!sourceCordinates || !DestinationCordinates || !MAPBOX_ACCESS_TOKEN) {
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${sourceCordinates.lng},${sourceCordinates.lat};${DestinationCordinates.lng},${DestinationCordinates.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`
+        );
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch route');
+        }
+
+        const data = await res.json();
+
+        if (data.code === "Ok" && data.routes?.[0]) {
+          const route = data.routes[0];
+          setDirectionData({
+            routes: [{
+              geometry: route.geometry,
+              distance: route.distance,
+              duration: route.duration
+            }],
+            code: data.code
+          });
+
+          // Smooth camera transition
+          if (mapRef.current && route.geometry.coordinates.length > 0) {
+            const coordinates = route.geometry.coordinates;
+            const bounds = coordinates.reduce(
+              (bounds: any, coord: number[]) => ({
+                ne: {
+                  lat: Math.max(bounds.ne.lat, coord[1]),
+                  lng: Math.max(bounds.ne.lng, coord[0])
+                },
+                sw: {
+                  lat: Math.min(bounds.sw.lat, coord[1]),
+                  lng: Math.min(bounds.sw.lng, coord[0])
+                }
+              }),
+              {
+                ne: { lat: -90, lng: -180 },
+                sw: { lat: 90, lng: 180 }
+              }
+            );
+
+            mapRef.current.fitBounds(
+              [
+                [bounds.sw.lng, bounds.sw.lat],
+                [bounds.ne.lng, bounds.ne.lat]
+              ],
+              {
+                padding: 100,
+                duration: 1000,
+                essential: true
+              }
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error calculating route:', error);
+      }
+    };
+
+    // Debounce route calculation
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(calculateRoute, 300);
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [sourceCordinates, DestinationCordinates, setDirectionData]);
 
   return (
-    <div className="p-5 ">
-      <h2 className="text-[20px] font-semibold">Map</h2>
-      <div className="rounded-lg overflow-hidden">
-        {userLocation ? (
-          <Map
-            ref={mapRef}
-            mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-            initialViewState={{
-              longitude: userLocation?.lng,
-              latitude: userLocation?.lat,
-              zoom: 14,
-            }}
-            style={{ width: "100%", height: 450, borderRadius: 10 }}
-            mapStyle="mapbox://styles/mapbox/streets-v9"
-          >
-            <Markers />
-
-            {directionData?.routes ? (
-              <MapBoxRoute
-                coordinates={directionData?.routes[0]?.geometry?.coordinates}
-              />
-            ) : null}
-          </Map>
-        ) : null}
-      </div>
-      <div className="relative bottom-[47px] z-20 right-[-68.7%] hidden md:block ">
-        <DistanceTime/>
+    <div className='p-5'>
+      <h2 className='text-[20px] font-semibold'>Map</h2>
+      <div className='rounded-lg overflow-hidden relative'>
+        <Map
+          ref={mapRef}
+          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
+          initialViewState={INITIAL_VIEW_STATE}
+          style={{ width: '100%', height: 450, borderRadius: 10 }}
+          mapStyle='mapbox://styles/mapbox/streets-v12'
+          attributionControl={false}
+          renderWorldCopies={false} // Improves performance
+          optimizeForTerrain={false} // Improves performance
+          maxZoom={16} // Limit zoom to improve performance
+        >
+          <Markers />
+          {directionData?.routes?.[0]?.geometry?.coordinates && (
+            <MapBoxRoute 
+              coordinates={directionData.routes[0].geometry.coordinates} 
+            />
+          )}
+        </Map>
+        
+        {directionData?.routes?.[0] && (
+          <div className="absolute bottom-0 right-0 p-4 bg-white dark:bg-gray-800 rounded-tl-lg shadow-lg">
+            <DistanceTime route={directionData.routes[0]} />
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default MapBox;
+}
