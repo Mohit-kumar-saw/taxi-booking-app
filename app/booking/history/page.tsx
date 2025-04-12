@@ -89,7 +89,6 @@ export default function HistoryPage() {
               key={booking.id} 
               booking={{
                 ...booking,
-                bookingDate: booking.date,
                 source: booking.source || 'N/A',
                 destination: booking.destination || 'N/A',
                 carType: booking.carType || 'Standard',
