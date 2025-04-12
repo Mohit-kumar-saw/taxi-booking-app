@@ -14,12 +14,16 @@ export default function Home() {
         <DestinationCordiContextProvider>
           <DirectionDataContextProvider>
             <SelectedCarAmountContextProvider>
-              <main className="grid grid-cols-1 md:grid-cols-3 gap-5 p-4">
-                <div className="md:col-span-2">
-                  <MapBox />
-                </div>
-                <div>
-                  <Booking />
+              <main className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 rounded-xl overflow-hidden shadow-lg">
+                      <MapBox />
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg">
+                      <Booking />
+                    </div>
+                  </div>
                 </div>
               </main>
             </SelectedCarAmountContextProvider>

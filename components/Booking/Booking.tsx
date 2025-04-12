@@ -38,21 +38,26 @@ export default function Booking() {
   }
 
   return (
-    <div className='p-5'>
-      <h2 className='text-[20px] font-semibold'>Booking</h2>
-      <div className='border-[1px] p-5 rounded-md'>
-        <AutocompleteAddress />
-        <Cars />
+    <div className='p-6'>
+      <h2 className='text-2xl font-bold text-gray-800 mb-6'>Book Your Ride</h2>
+      <div className='space-y-6'>
+        <div className='bg-purple-50 rounded-lg p-4'>
+          <AutocompleteAddress />
+        </div>
+        
+        <div className='bg-white rounded-lg'>
+          <Cars />
+        </div>
         
         {/* Book Now Button */}
         <button
           onClick={handleBookNow}
           disabled={!carAmount || !directionData?.routes?.[0]}
           className={`
-            w-full mt-4 p-3 rounded-md text-white font-semibold text-lg
-            transition-all duration-200
+            w-full py-4 rounded-lg text-white font-semibold text-lg
+            transition-all duration-200 hover-scale
             ${carAmount && directionData?.routes?.[0]
-              ? 'bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600'
+              ? 'purple-gradient shadow-lg shadow-purple-500/30'
               : 'bg-gray-300 cursor-not-allowed'
             }
           `}
